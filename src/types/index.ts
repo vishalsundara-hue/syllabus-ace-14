@@ -62,8 +62,10 @@ export interface DocumentQuestion {
   explanation: string;
   visualDescription: string;
   diagramUrl?: string;
+  generatedImageUrl?: string;
+  manimCode?: string;
   accuracyScore: number;
-  videoStatus: 'idle' | 'generating' | 'ready';
+  videoStatus: 'idle' | 'generating' | 'ready' | 'error';
   videoUrl?: string;
   timestamp: Date;
 }

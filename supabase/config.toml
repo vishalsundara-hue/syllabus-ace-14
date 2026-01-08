@@ -1,0 +1,4 @@
+project_id = "rbnmmjgewbeppubvmwtj"
+
+[functions.generate-explanation-visual]
+verify_jwt = false
