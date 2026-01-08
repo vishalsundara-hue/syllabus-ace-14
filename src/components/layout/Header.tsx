@@ -1,7 +1,9 @@
 import React from 'react';
-import { BookOpen, Moon, Sun, History, Upload, Map, Calendar } from 'lucide-react';
+import { BookOpen, Moon, Sun, History, Upload, Map, Calendar, Users, LogIn, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
   activeTab: string;
@@ -10,6 +12,8 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
   const { theme, toggleTheme } = useTheme();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const tabs = [
     { id: 'learn', label: 'Learn', icon: BookOpen },
@@ -17,6 +21,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
     { id: 'history', label: 'History', icon: History },
     { id: 'mindmap', label: 'Mind Map', icon: Map },
     { id: 'planner', label: 'Study Plan', icon: Calendar },
+    { id: 'community', label: 'Community', icon: Users },
   ];
 
   return (
@@ -38,14 +43,14 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
           </div>
 
           {/* Navigation Tabs */}
-          <nav className="hidden md:flex items-center gap-1 bg-muted/50 p-1 rounded-xl">
+          <nav className="hidden lg:flex items-center gap-1 bg-muted/50 p-1 rounded-xl">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                     activeTab === tab.id
                       ? 'bg-primary text-primary-foreground shadow-md'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted'
@@ -58,23 +63,53 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
             })}
           </nav>
 
-          {/* Theme Toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            className="rounded-xl hover:bg-muted"
-          >
-            {theme === 'light' ? (
-              <Moon className="w-5 h-5 text-muted-foreground" />
+          {/* Right Actions */}
+          <div className="flex items-center gap-2">
+            {user ? (
+              <div className="flex items-center gap-2">
+                <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-lg">
+                  <User className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm text-foreground">{user.email?.split('@')[0]}</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={signOut}
+                  className="gap-2"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="hidden sm:inline">Sign Out</span>
+                </Button>
+              </div>
             ) : (
-              <Sun className="w-5 h-5 text-warning" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/auth')}
+                className="gap-2"
+              >
+                <LogIn className="w-4 h-4" />
+                Sign In
+              </Button>
             )}
-          </Button>
+            
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              className="rounded-xl hover:bg-muted"
+            >
+              {theme === 'light' ? (
+                <Moon className="w-5 h-5 text-muted-foreground" />
+              ) : (
+                <Sun className="w-5 h-5 text-warning" />
+              )}
+            </Button>
+          </div>
         </div>
 
         {/* Mobile Navigation */}
-        <nav className="flex md:hidden items-center gap-1 pb-3 overflow-x-auto">
+        <nav className="flex lg:hidden items-center gap-1 pb-3 overflow-x-auto">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
