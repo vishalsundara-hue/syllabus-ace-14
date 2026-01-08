@@ -7,6 +7,7 @@ import FileUpload from '@/components/upload/FileUpload';
 import HistoryPanel from '@/components/history/HistoryPanel';
 import MindMapView from '@/components/mindmap/MindMapView';
 import StudyPlanner from '@/components/planner/StudyPlanner';
+import CommunityPanel from '@/components/community/CommunityPanel';
 import { Question, Answer } from '@/types';
 import { Sparkles, BookOpen, Brain, Zap } from 'lucide-react';
 
@@ -76,6 +77,8 @@ const Index: React.FC = () => {
         return <MindMapView />;
       case 'planner':
         return <StudyPlanner />;
+      case 'community':
+        return <CommunityPanel />;
       default:
         return null;
     }
