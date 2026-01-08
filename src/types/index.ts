@@ -40,7 +40,32 @@ export interface UploadedFile {
   type: 'pdf' | 'image';
   summary: string;
   keyPoints: string[];
+  topics: ExtractedTopic[];
   uploadedAt: Date;
+}
+
+export interface ExtractedTopic {
+  id: string;
+  name: string;
+  description: string;
+  subtopics: string[];
+}
+
+export interface DocumentQuestion {
+  id: string;
+  fileId: string;
+  topicId: string;
+  question: string;
+  level: QuestionLevel;
+  keywords: string[];
+  reason: string;
+  explanation: string;
+  visualDescription: string;
+  diagramUrl?: string;
+  accuracyScore: number;
+  videoStatus: 'idle' | 'generating' | 'ready';
+  videoUrl?: string;
+  timestamp: Date;
 }
 
 export interface StudyPlan {
