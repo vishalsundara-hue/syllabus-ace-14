@@ -1,13 +1,15 @@
 import React, { useState, useCallback } from 'react';
-import { Upload, FileText, Image, Loader2, CheckCircle, Sparkles, MessageSquare, Video, BookOpen, ChevronRight, Lightbulb, Target, Zap } from 'lucide-react';
+import { Upload, FileText, Image, Loader2, CheckCircle, Sparkles, MessageSquare, Video, BookOpen, ChevronRight, Lightbulb, Target, Zap, Download, Code, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useStudy } from '@/contexts/StudyContext';
 import { UploadedFile, ExtractedTopic, DocumentQuestion, QuestionLevel } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
-
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 const FileUpload: React.FC = () => {
   const { uploadedFiles, addUploadedFile } = useStudy();
+  const { toast } = useToast();
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingFile, setProcessingFile] = useState<string | null>(null);
@@ -17,6 +19,7 @@ const FileUpload: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [documentQuestion, setDocumentQuestion] = useState<DocumentQuestion | null>(null);
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
+  const [showManimCode, setShowManimCode] = useState(false);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -193,19 +196,51 @@ const FileUpload: React.FC = () => {
   };
 
   const generateVideo = async () => {
-    if (!documentQuestion) return;
+    if (!documentQuestion || !selectedTopic) return;
 
     setIsGeneratingVideo(true);
     setDocumentQuestion(prev => prev ? { ...prev, videoStatus: 'generating' } : null);
 
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-explanation-visual', {
+        body: {
+          topic: selectedTopic.name,
+          question: documentQuestion.question,
+          level: documentQuestion.level,
+          explanation: documentQuestion.explanation
+        }
+      });
 
-    setDocumentQuestion(prev => prev ? { 
-      ...prev, 
-      videoStatus: 'ready',
-      videoUrl: '#video-placeholder'
-    } : null);
-    setIsGeneratingVideo(false);
+      if (error) {
+        throw error;
+      }
+
+      if (data?.success) {
+        setDocumentQuestion(prev => prev ? { 
+          ...prev, 
+          videoStatus: 'ready',
+          generatedImageUrl: data.image,
+          manimCode: data.manimCode
+        } : null);
+        
+        toast({
+          title: "Visual Generated!",
+          description: "Manim-style visualization has been created.",
+        });
+      } else {
+        throw new Error(data?.error || 'Failed to generate visual');
+      }
+    } catch (error) {
+      console.error('Error generating video:', error);
+      setDocumentQuestion(prev => prev ? { ...prev, videoStatus: 'error' } : null);
+      toast({
+        title: "Generation Failed",
+        description: error instanceof Error ? error.message : "Failed to generate visual. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingVideo(false);
+    }
   };
 
   const getLevelColor = (level: QuestionLevel) => {
@@ -517,17 +552,17 @@ const FileUpload: React.FC = () => {
               </div>
             </div>
 
-            {/* Video Generation */}
+            {/* Manim Visual Generation */}
             <div className="glass-card p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-display font-semibold text-lg text-foreground flex items-center gap-2">
                   <Video className="w-5 h-5 text-primary" />
-                  Video Explanation
+                  Manim Visual Explanation
                 </h3>
-                {documentQuestion.videoStatus === 'idle' && (
-                  <Button onClick={generateVideo} className="gap-2">
-                    <Video className="w-4 h-4" />
-                    Generate Video
+                {(documentQuestion.videoStatus === 'idle' || documentQuestion.videoStatus === 'error') && (
+                  <Button onClick={generateVideo} className="gap-2" disabled={isGeneratingVideo}>
+                    <ImageIcon className="w-4 h-4" />
+                    Generate Visual
                   </Button>
                 )}
               </div>
@@ -538,38 +573,119 @@ const FileUpload: React.FC = () => {
                     <div className="w-20 h-20 rounded-full border-4 border-primary/20 animate-pulse" />
                     <Loader2 className="w-10 h-10 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-spin" />
                   </div>
-                  <p className="mt-4 font-medium text-foreground">Generating video with Manim...</p>
-                  <p className="text-sm text-muted-foreground">This may take a few moments</p>
+                  <p className="mt-4 font-medium text-foreground">Generating Manim-style visual...</p>
+                  <p className="text-sm text-muted-foreground">AI is creating an animated educational diagram</p>
+                </div>
+              )}
+
+              {documentQuestion.videoStatus === 'error' && (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-destructive/10 flex items-center justify-center">
+                    <Video className="w-8 h-8 text-destructive" />
+                  </div>
+                  <p className="font-medium text-foreground">Generation Failed</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Click the button above to try again
+                  </p>
                 </div>
               )}
 
               {documentQuestion.videoStatus === 'ready' && (
-                <div className="space-y-4">
-                  <div className="aspect-video bg-gradient-to-br from-primary/20 to-accent/20 rounded-xl flex items-center justify-center border border-border">
-                    <div className="text-center">
-                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Video className="w-8 h-8 text-primary" />
+                <div className="space-y-6">
+                  {/* Generated Manim-style Image */}
+                  {documentQuestion.generatedImageUrl && (
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
+                        <ImageIcon className="w-4 h-4 text-accent" />
+                        Generated Manim Visualization
+                      </h4>
+                      <div className="rounded-xl overflow-hidden border border-border bg-[#1a1a2e]">
+                        <img 
+                          src={documentQuestion.generatedImageUrl} 
+                          alt="Manim visualization"
+                          className="w-full h-auto"
+                        />
                       </div>
-                      <p className="font-medium text-foreground">Video Ready!</p>
+                      <p className="text-xs text-muted-foreground text-center">
+                        3Blue1Brown-style educational visualization generated by AI
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Manim Python Code */}
+                  {documentQuestion.manimCode && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
+                          <Code className="w-4 h-4 text-primary" />
+                          Manim Python Code
+                        </h4>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setShowManimCode(!showManimCode)}
+                          >
+                            {showManimCode ? 'Hide Code' : 'Show Code'}
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              const blob = new Blob([documentQuestion.manimCode || ''], { type: 'text/plain' });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `manim_${selectedTopic?.name.replace(/\s+/g, '_').toLowerCase() || 'animation'}.py`;
+                              a.click();
+                              URL.revokeObjectURL(url);
+                            }}
+                          >
+                            <Download className="w-4 h-4 mr-1" />
+                            Download
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <AnimatePresence>
+                        {showManimCode && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="bg-[#1e1e2e] rounded-xl p-4 font-mono text-xs overflow-x-auto border border-border">
+                              <pre className="text-green-400 whitespace-pre-wrap">
+                                {documentQuestion.manimCode}
+                              </pre>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Run this code with Manim Community Edition: <code className="bg-muted px-1 rounded">manim -pql animation.py SceneName</code>
+                            </p>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
+
+                  {!documentQuestion.generatedImageUrl && !documentQuestion.manimCode && (
+                    <div className="text-center py-8">
+                      <CheckCircle className="w-12 h-12 mx-auto mb-3 text-success" />
+                      <p className="font-medium text-foreground">Visual Generated!</p>
                       <p className="text-sm text-muted-foreground mt-1">
                         Manim animation for: {selectedTopic?.name}
                       </p>
-                      <Button className="mt-4 gap-2">
-                        <Video className="w-4 h-4" />
-                        Play Video
-                      </Button>
                     </div>
-                  </div>
-                  <p className="text-sm text-muted-foreground text-center">
-                    This video explains the concept using animated mathematical visualizations
-                  </p>
+                  )}
                 </div>
               )}
 
               {documentQuestion.videoStatus === 'idle' && (
                 <div className="text-center py-8 text-muted-foreground">
                   <Video className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                  <p>Click "Generate Video" to create an animated explanation</p>
+                  <p>Click "Generate Visual" to create a Manim-style animated explanation</p>
+                  <p className="text-xs mt-2">Generates AI visualization + downloadable Python code</p>
                 </div>
               )}
             </div>
