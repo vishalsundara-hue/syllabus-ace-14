@@ -23,7 +23,6 @@ interface SharedPlan {
   likes_count: number | null;
   created_at: string;
   profile_display_name?: string | null;
-  profile_email?: string | null;
 }
 
 const CommunityPanel: React.FC = () => {
@@ -59,11 +58,13 @@ const CommunityPanel: React.FC = () => {
 
       if (plansError) throw plansError;
 
-      // Fetch profiles for all user_ids
+      // Fetch public profiles (without email) for all user_ids using RPC or direct query
       const userIds = [...new Set(plans?.map(p => p.user_id) || [])];
+      
+      // Query profiles but only select non-sensitive fields
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, display_name, email')
+        .select('id, display_name, avatar_url')
         .in('id', userIds);
 
       // Merge profiles with plans
@@ -72,7 +73,6 @@ const CommunityPanel: React.FC = () => {
         return {
           ...plan,
           profile_display_name: profile?.display_name,
-          profile_email: profile?.email,
         };
       });
 
@@ -295,7 +295,7 @@ const CommunityPanel: React.FC = () => {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-foreground">
-                        {plan.profile_display_name || plan.profile_email?.split('@')[0] || 'Anonymous'}
+                        {plan.profile_display_name || 'Anonymous'}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(plan.created_at).toLocaleDateString()}
