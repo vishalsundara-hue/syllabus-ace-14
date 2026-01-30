@@ -1,10 +1,74 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
+
+// Input validation constants
+const MAX_TOPIC_LENGTH = 100;
+const MAX_QUESTION_LENGTH = 500;
+const MAX_EXPLANATION_LENGTH = 2000;
+const VALID_LEVELS = ['Beginner', 'Intermediate', 'Advanced'] as const;
+
+interface RequestBody {
+  topic: string;
+  question: string;
+  level: string;
+  explanation: string;
+}
+
+function validateInput(body: unknown): { valid: true; data: RequestBody } | { valid: false; error: string } {
+  if (!body || typeof body !== 'object') {
+    return { valid: false, error: 'Invalid request body' };
+  }
+
+  const { topic, question, level, explanation } = body as Record<string, unknown>;
+
+  // Validate topic
+  if (typeof topic !== 'string' || topic.trim().length === 0) {
+    return { valid: false, error: 'Topic is required and must be a non-empty string' };
+  }
+  if (topic.length > MAX_TOPIC_LENGTH) {
+    return { valid: false, error: `Topic must be less than ${MAX_TOPIC_LENGTH} characters` };
+  }
+
+  // Validate question
+  if (typeof question !== 'string' || question.trim().length === 0) {
+    return { valid: false, error: 'Question is required and must be a non-empty string' };
+  }
+  if (question.length > MAX_QUESTION_LENGTH) {
+    return { valid: false, error: `Question must be less than ${MAX_QUESTION_LENGTH} characters` };
+  }
+
+  // Validate level
+  if (typeof level !== 'string' || !VALID_LEVELS.includes(level as typeof VALID_LEVELS[number])) {
+    return { valid: false, error: `Level must be one of: ${VALID_LEVELS.join(', ')}` };
+  }
+
+  // Validate explanation
+  if (typeof explanation !== 'string' || explanation.trim().length === 0) {
+    return { valid: false, error: 'Explanation is required and must be a non-empty string' };
+  }
+  if (explanation.length > MAX_EXPLANATION_LENGTH) {
+    return { valid: false, error: `Explanation must be less than ${MAX_EXPLANATION_LENGTH} characters` };
+  }
+
+  // Sanitize inputs - remove control characters
+  const sanitize = (str: string) => str.replace(/[\x00-\x1F\x7F]/g, '').trim();
+
+  return {
+    valid: true,
+    data: {
+      topic: sanitize(topic),
+      question: sanitize(question),
+      level: level as string,
+      explanation: sanitize(explanation),
+    }
+  };
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -13,9 +77,59 @@ serve(async (req) => {
   }
 
   try {
-    const { topic, question, level, explanation } = await req.json();
+    // Authentication check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized - Missing or invalid authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    console.log('Generating visual explanation for:', { topic, question, level });
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    // Verify the user's JWT token
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+
+    if (claimsError || !claimsData?.claims) {
+      console.error('Auth error:', claimsError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized - Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const userId = claimsData.claims.sub;
+    console.log('Authenticated user:', userId);
+
+    // Parse and validate input
+    let requestBody: unknown;
+    try {
+      requestBody = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid JSON in request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const validation = validateInput(requestBody);
+    if (!validation.valid) {
+      return new Response(
+        JSON.stringify({ success: false, error: validation.error }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { topic, question, level, explanation } = validation.data;
+
+    console.log('Generating visual explanation for:', { topic, question, level, userId });
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -61,7 +175,7 @@ Style: Mathematical animation frame, vector graphics style, educational infograp
     }
 
     const imageData = await imageResponse.json();
-    console.log('Image generation response:', JSON.stringify(imageData).substring(0, 500));
+    console.log('Image generation response received for user:', userId);
 
     // Extract the generated image
     const generatedImage = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
