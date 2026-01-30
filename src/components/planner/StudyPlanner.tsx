@@ -1,13 +1,20 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, Plus, Check, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, Plus, Check, Sparkles, ChevronLeft, ChevronRight, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useStudy } from '@/contexts/StudyContext';
 import { StudyPlan, StudyDay, TimeSlot } from '@/types';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 const StudyPlanner: React.FC = () => {
   const { studyPlans, addStudyPlan } = useStudy();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [topic, setTopic] = useState('');
+  const [isSharing, setIsSharing] = useState(false);
   const [duration, setDuration] = useState('7');
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
@@ -58,6 +65,33 @@ const StudyPlanner: React.FC = () => {
     addStudyPlan(plan);
     setIsGenerating(false);
     setTopic('');
+    toast.success('Study plan generated!');
+  };
+
+  const shareToCommmunity = async (plan: StudyPlan) => {
+    if (!user) {
+      toast.error('Please sign in to share your plan');
+      navigate('/auth');
+      return;
+    }
+
+    setIsSharing(true);
+    try {
+      const { error } = await supabase.from('shared_study_plans').insert([{
+        user_id: user.id,
+        title: `${plan.topic} Study Plan`,
+        topic: plan.topic,
+        days: plan.days as unknown as import('@/integrations/supabase/types').Json,
+        description: `A ${plan.days.length}-day study plan for ${plan.topic}`,
+      }]);
+
+      if (error) throw error;
+      toast.success('Plan shared to community!');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to share plan');
+    } finally {
+      setIsSharing(false);
+    }
   };
 
   const getWeekDays = () => {
@@ -216,14 +250,30 @@ const StudyPlanner: React.FC = () => {
       {/* Today's Tasks */}
       {currentPlan && (
         <div className="glass-card p-6 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-              <Clock className="w-5 h-5 text-accent" />
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-accent" />
+              </div>
+              <div>
+                <h3 className="font-display font-semibold text-lg text-foreground">Today's Schedule</h3>
+                <p className="text-sm text-muted-foreground">{currentPlan.topic}</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-display font-semibold text-lg text-foreground">Today's Schedule</h3>
-              <p className="text-sm text-muted-foreground">{currentPlan.topic}</p>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => shareToCommmunity(currentPlan)}
+              disabled={isSharing}
+              className="gap-2"
+            >
+              {isSharing ? (
+                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Share2 className="w-4 h-4" />
+              )}
+              Share to Community
+            </Button>
           </div>
 
           <div className="space-y-3">
