@@ -19,6 +19,8 @@ export interface Answer {
   accuracyScore: number;
   diagrams?: string;
   mcqs?: MCQ[];
+  keyTakeaways?: string[];
+  relatedTopics?: string[];
 }
 
 export interface MCQ {
