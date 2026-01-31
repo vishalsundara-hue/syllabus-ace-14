@@ -42,21 +42,21 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
           </div>
 
           {/* Navigation Tabs */}
-          <nav className="hidden lg:flex items-center gap-1 bg-muted/50 p-1 rounded-xl overflow-x-auto max-w-3xl">
+          <nav className="hidden xl:flex items-center gap-0.5 bg-muted/50 p-1 rounded-xl">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-all duration-200 whitespace-nowrap ${
+                  className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 whitespace-nowrap ${
                     activeTab === tab.id
                       ? 'bg-primary text-primary-foreground shadow-md'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
-                  {tab.label}
+                  <span className="hidden 2xl:inline">{tab.label}</span>
                 </button>
               );
             })}
@@ -79,8 +79,8 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
           </div>
         </div>
 
-        {/* Mobile Navigation */}
-        <nav className="flex lg:hidden items-center gap-1 pb-3 overflow-x-auto">
+        {/* Mobile/Tablet Navigation */}
+        <nav className="flex xl:hidden items-center gap-1 pb-3 overflow-x-auto scrollbar-hide">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
