@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { Brain, Tag, TrendingUp, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Brain, Tag, TrendingUp, CheckCircle, XCircle, ChevronDown, ChevronUp, Sparkles, Image, Code, Download, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Question, Answer, MCQ } from '@/types';
 import { Progress } from '@/components/ui/progress';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
 interface AnswerDisplayProps {
   question: Question;
@@ -10,9 +13,16 @@ interface AnswerDisplayProps {
 }
 
 const AnswerDisplay: React.FC<AnswerDisplayProps> = ({ question, answer }) => {
+  const { user } = useAuth();
   const [showMCQs, setShowMCQs] = useState(false);
   const [mcqAnswers, setMcqAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
+  
+  // Visual explanation state
+  const [isGeneratingVisual, setIsGeneratingVisual] = useState(false);
+  const [visualImage, setVisualImage] = useState<string | null>(null);
+  const [manimCode, setManimCode] = useState<string | null>(null);
+  const [showCode, setShowCode] = useState(false);
 
   const levelColors = {
     Beginner: 'level-badge-beginner',
@@ -76,6 +86,64 @@ const AnswerDisplay: React.FC<AnswerDisplayProps> = ({ question, answer }) => {
       if (mcqAnswers[mcq.id] === mcq.correctAnswer) correct++;
     });
     return correct;
+  };
+
+  const generateVisualExplanation = async () => {
+    if (!user) {
+      toast.error('Please sign in to generate visual explanations');
+      return;
+    }
+
+    setIsGeneratingVisual(true);
+    setVisualImage(null);
+    setManimCode(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await supabase.functions.invoke('generate-explanation-visual', {
+        body: {
+          topic: question.topic,
+          question: question.text,
+          level: question.level,
+          explanation: answer.explanation.substring(0, 2000),
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to generate visual');
+      }
+
+      const data = response.data;
+      
+      if (data.success) {
+        setVisualImage(data.image || null);
+        setManimCode(data.manimCode || null);
+        toast.success('Visual explanation generated!');
+      } else {
+        throw new Error(data.error || 'Failed to generate visual');
+      }
+    } catch (error: any) {
+      console.error('Error generating visual:', error);
+      toast.error(error.message || 'Failed to generate visual explanation');
+    } finally {
+      setIsGeneratingVisual(false);
+    }
+  };
+
+  const downloadManimCode = () => {
+    if (!manimCode) return;
+    
+    const blob = new Blob([manimCode], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${question.topic.replace(/\s+/g, '_')}_animation.py`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Manim code downloaded!');
   };
 
   return (
@@ -156,6 +224,107 @@ const AnswerDisplay: React.FC<AnswerDisplayProps> = ({ question, answer }) => {
             return <p key={i} className="text-muted-foreground mb-2">{line}</p>;
           })}
         </div>
+      </div>
+
+      {/* Visual Explanation Card */}
+      <div className="glass-card p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-accent" />
+            </div>
+            <div>
+              <h3 className="font-display font-semibold text-lg text-foreground">Visual Explanation</h3>
+              <p className="text-sm text-muted-foreground">AI-generated diagram in 3Blue1Brown style</p>
+            </div>
+          </div>
+          {!visualImage && (
+            <Button 
+              onClick={generateVisualExplanation} 
+              disabled={isGeneratingVisual || !user}
+              className="gap-2"
+            >
+              {isGeneratingVisual ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Image className="w-4 h-4" />
+                  Generate Visual
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+
+        {!user && (
+          <div className="p-4 bg-muted/30 rounded-xl text-center">
+            <p className="text-muted-foreground">Sign in to generate visual explanations</p>
+          </div>
+        )}
+
+        {isGeneratingVisual && (
+          <div className="p-8 bg-muted/30 rounded-xl flex flex-col items-center justify-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <Loader2 className="w-6 h-6 text-primary animate-spin" />
+            </div>
+            <p className="text-muted-foreground">Generating visual explanation...</p>
+            <p className="text-xs text-muted-foreground">This may take 15-30 seconds</p>
+          </div>
+        )}
+
+        {visualImage && (
+          <div className="space-y-4">
+            <div className="rounded-xl overflow-hidden border border-border">
+              <img 
+                src={visualImage} 
+                alt="Visual explanation diagram" 
+                className="w-full h-auto"
+              />
+            </div>
+
+            {manimCode && (
+              <div className="space-y-2">
+                <button
+                  onClick={() => setShowCode(!showCode)}
+                  className="flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+                >
+                  <Code className="w-4 h-4" />
+                  {showCode ? 'Hide' : 'View'} Manim Animation Code
+                </button>
+
+                {showCode && (
+                  <div className="relative">
+                    <pre className="p-4 bg-muted rounded-xl overflow-x-auto text-xs text-foreground max-h-64">
+                      <code>{manimCode}</code>
+                    </pre>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={downloadManimCode}
+                      className="absolute top-2 right-2 gap-1"
+                    >
+                      <Download className="w-3 h-3" />
+                      Download
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <Button 
+              variant="outline" 
+              onClick={generateVisualExplanation}
+              disabled={isGeneratingVisual}
+              className="gap-2"
+            >
+              <Sparkles className="w-4 h-4" />
+              Regenerate Visual
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* MCQ Section */}
