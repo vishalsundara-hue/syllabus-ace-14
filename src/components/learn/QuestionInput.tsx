@@ -3,6 +3,8 @@ import { Send, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useStudy } from '@/contexts/StudyContext';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { QuestionLevel, Question, Answer, HistoryItem } from '@/types';
 
 interface QuestionInputProps {
@@ -11,6 +13,7 @@ interface QuestionInputProps {
 
 const QuestionInput: React.FC<QuestionInputProps> = ({ onAnalysis }) => {
   const { college, topic, addToHistory } = useStudy();
+  const { toast } = useToast();
   const [questionText, setQuestionText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -35,120 +38,67 @@ const QuestionInput: React.FC<QuestionInputProps> = ({ onAnalysis }) => {
     return { level: 'Beginner', keywords, reason: 'Your question is about basic definitions and understanding.' };
   };
 
-  const generateExplanation = (level: QuestionLevel, questionText: string): string => {
-    const explanations: Record<QuestionLevel, string> = {
-      Beginner: `Let me explain this in a simple way! 📚
-
-Think of it like this: When you're learning something new, it's like building with blocks. Each concept is a building block that helps you understand bigger ideas.
-
-**Simple Explanation:**
-${topic} is a fundamental concept that forms the basis of many advanced topics. Here's what you need to know:
-
-1. **Basic Definition**: This is the core idea that everything else builds upon.
-2. **Why It Matters**: Understanding this helps you grasp more complex topics later.
-3. **Real-Life Example**: Imagine you're organizing your bookshelf...
-
-**Key Takeaway**: Focus on understanding the 'why' before the 'how'. Once you get the basic idea, everything else becomes easier! 💡`,
-
-      Intermediate: `Great question! Let's dive into how this works. 🔧
-
-**Technical Overview:**
-${topic} involves several important mechanisms working together. Here's a step-by-step breakdown:
-
-1. **Core Process**:
-   - First, the system initializes the necessary components
-   - Then, data flows through the processing pipeline
-   - Finally, results are generated and returned
-
-2. **Implementation Example**:
-\`\`\`
-// Example pseudocode
-function process(input) {
-  validate(input);
-  transform(input);
-  return result;
-}
-\`\`\`
-
-3. **Common Use Cases**:
-   - Scenario A: When you need to...
-   - Scenario B: When handling...
-
-**Pro Tip**: Always consider the input-output relationship when implementing! 🎯`,
-
-      Master: `Excellent advanced question! Let's explore the deeper mechanics. 🧠
-
-**Deep Dive Analysis:**
-
-**1. Internal Architecture:**
-The underlying structure of ${topic} involves sophisticated patterns:
-- Memory management considerations
-- Time complexity: O(n log n) in average case
-- Space complexity trade-offs
-
-**2. Optimization Strategies:**
-\`\`\`
-// Optimized approach
-function optimizedProcess(input) {
-  // Use memoization for repeated calculations
-  const cache = new Map();
-  // Implement early termination
-  if (meetsCriteria(input)) return cached;
-  // Apply divide-and-conquer
-  return merge(process(left), process(right));
-}
-\`\`\`
-
-**3. Edge Cases to Consider:**
-- Empty input handling
-- Maximum size boundaries
-- Concurrent access scenarios
-
-**4. Best Practices:**
-- Always validate before processing
-- Implement proper error boundaries
-- Consider scalability from day one
-
-**Expert Insight**: The key to mastery is understanding not just 'how' but 'why' each design decision was made. 🏆`,
-    };
-
-    return explanations[level];
-  };
-
   const handleSubmit = async () => {
     if (!questionText.trim() || !topic) return;
     
     setIsLoading(true);
     
-    // Simulate processing
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const analysis = analyzeQuestion(questionText);
-    
-    const question: Question = {
-      id: Date.now().toString(),
-      text: questionText,
-      level: analysis.level,
-      keywords: analysis.keywords,
-      reason: analysis.reason,
-      college,
-      subject: '',
-      topic,
-      timestamp: new Date(),
-    };
+    try {
+      const analysis = analyzeQuestion(questionText);
+      
+      // Call OpenAI-powered edge function for explanation
+      const { data, error } = await supabase.functions.invoke('generate-explanation', {
+        body: {
+          topic,
+          question: questionText,
+          level: analysis.level,
+          keywords: analysis.keywords,
+        },
+      });
 
-    const answer: Answer = {
-      id: Date.now().toString(),
-      questionId: question.id,
-      explanation: generateExplanation(analysis.level, questionText),
-      accuracyScore: Math.floor(Math.random() * 15) + 85, // 85-100%
-    };
+      if (error) {
+        throw new Error(error.message || 'Failed to generate explanation');
+      }
 
-    const historyItem: HistoryItem = { question, answer };
-    addToHistory(historyItem);
-    onAnalysis(question, answer);
-    setQuestionText('');
-    setIsLoading(false);
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to generate explanation');
+      }
+
+      const question: Question = {
+        id: Date.now().toString(),
+        text: questionText,
+        level: analysis.level,
+        keywords: analysis.keywords,
+        reason: analysis.reason,
+        college,
+        subject: '',
+        topic,
+        timestamp: new Date(),
+      };
+
+      const answer: Answer = {
+        id: Date.now().toString(),
+        questionId: question.id,
+        explanation: data.explanation,
+        accuracyScore: data.accuracyScore || 85,
+        keyTakeaways: data.keyTakeaways,
+        relatedTopics: data.relatedTopics,
+      };
+
+      const historyItem: HistoryItem = { question, answer };
+      addToHistory(historyItem);
+      onAnalysis(question, answer);
+      setQuestionText('');
+    } catch (error: any) {
+      console.error('Error generating explanation:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to generate explanation. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
