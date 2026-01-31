@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Question, Answer, MCQ } from '@/types';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+
 import { toast } from 'sonner';
 
 interface AnswerDisplayProps {
@@ -13,7 +13,6 @@ interface AnswerDisplayProps {
 }
 
 const AnswerDisplay: React.FC<AnswerDisplayProps> = ({ question, answer }) => {
-  const { user } = useAuth();
   const [showMCQs, setShowMCQs] = useState(false);
   const [mcqAnswers, setMcqAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
@@ -93,10 +92,6 @@ const AnswerDisplay: React.FC<AnswerDisplayProps> = ({ question, answer }) => {
   };
 
   const generateVisualExplanation = async () => {
-    if (!user) {
-      toast.error('Please sign in to generate visual explanations');
-      return;
-    }
 
     setIsGeneratingVisual(true);
     setVisualImage(null);
@@ -134,10 +129,6 @@ const AnswerDisplay: React.FC<AnswerDisplayProps> = ({ question, answer }) => {
   };
 
   const generate3DImage = async () => {
-    if (!user) {
-      toast.error('Please sign in to generate 3D illustrations');
-      return;
-    }
 
     setIsGenerating3D(true);
     setImage3D(null);
@@ -297,7 +288,7 @@ const AnswerDisplay: React.FC<AnswerDisplayProps> = ({ question, answer }) => {
           {!image3D && (
             <Button 
               onClick={generate3DImage} 
-              disabled={isGenerating3D || !user}
+              disabled={isGenerating3D}
               variant="outline"
               className="gap-2"
             >
@@ -316,11 +307,6 @@ const AnswerDisplay: React.FC<AnswerDisplayProps> = ({ question, answer }) => {
           )}
         </div>
 
-        {!user && (
-          <div className="p-4 bg-muted/30 rounded-xl text-center">
-            <p className="text-muted-foreground">Sign in to generate 3D illustrations</p>
-          </div>
-        )}
 
         {isGenerating3D && (
           <div className="p-8 bg-muted/30 rounded-xl flex flex-col items-center justify-center gap-4">
@@ -368,7 +354,7 @@ const AnswerDisplay: React.FC<AnswerDisplayProps> = ({ question, answer }) => {
           {!visualImage && (
             <Button 
               onClick={generateVisualExplanation} 
-              disabled={isGeneratingVisual || !user}
+              disabled={isGeneratingVisual}
               className="gap-2"
             >
               {isGeneratingVisual ? (
@@ -386,11 +372,6 @@ const AnswerDisplay: React.FC<AnswerDisplayProps> = ({ question, answer }) => {
           )}
         </div>
 
-        {!user && (
-          <div className="p-4 bg-muted/30 rounded-xl text-center">
-            <p className="text-muted-foreground">Sign in to generate visual explanations</p>
-          </div>
-        )}
 
         {isGeneratingVisual && (
           <div className="p-8 bg-muted/30 rounded-xl flex flex-col items-center justify-center gap-4">
