@@ -5,3 +5,18 @@ verify_jwt = false
 
 [functions.generate-explanation]
 verify_jwt = false
+
+[functions.generate-study-plan]
+verify_jwt = false
+
+[functions.generate-roadmap]
+verify_jwt = false
+
+[functions.generate-3d-visual]
+verify_jwt = false
+
+[functions.chat-with-document]
+verify_jwt = false
+
+[functions.continue-conversation]
+verify_jwt = false
