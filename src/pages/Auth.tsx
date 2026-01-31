@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from '@/contexts/ThemeContext';
-import { BookOpen, Mail, Lock, User, Loader2, Sun, Moon } from 'lucide-react';
+import { BookOpen, Mail, Lock, Loader2, Sun, Moon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { z } from 'zod';
 
@@ -13,13 +13,9 @@ const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
 
 const Auth: React.FC = () => {
-  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isResending, setIsResending] = useState(false);
-  const [showVerificationMessage, setShowVerificationMessage] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -64,33 +60,6 @@ const Auth: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleResendVerification = async () => {
-    if (!email) {
-      toast({ title: 'Error', description: 'Please enter your email address', variant: 'destructive' });
-      return;
-    }
-    
-    setIsResending(true);
-    try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-        },
-      });
-      if (error) throw error;
-      toast({ 
-        title: 'Email sent!', 
-        description: 'Please check your inbox and spam folder for the verification link.' 
-      });
-    } catch (error: any) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } finally {
-      setIsResending(false);
-    }
-  };
-
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -99,37 +68,15 @@ const Auth: React.FC = () => {
     setIsLoading(true);
 
     try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
-        toast({ title: 'Welcome back!', description: 'You have successfully signed in.' });
-      } else {
-        const redirectUrl = `${window.location.origin}/`;
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: redirectUrl,
-            data: {
-              display_name: displayName || email.split('@')[0],
-            },
-          },
-        });
-        if (error) throw error;
-        setShowVerificationMessage(true);
-        toast({ 
-          title: 'Check your email!', 
-          description: 'We sent you a verification link. Please check your inbox and spam folder.' 
-        });
-      }
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) throw error;
+      toast({ title: 'Welcome back!', description: 'You have successfully signed in.' });
     } catch (error: any) {
       let message = 'An error occurred';
-      if (error.message.includes('User already registered')) {
-        message = 'This email is already registered. Please sign in instead.';
-      } else if (error.message.includes('Invalid login credentials')) {
+      if (error.message.includes('Invalid login credentials')) {
         message = 'Invalid email or password. Please try again.';
       } else {
         message = error.message;
@@ -157,70 +104,15 @@ const Auth: React.FC = () => {
         className="w-full max-w-md"
       >
         <div className="glass-card p-8">
-          {showVerificationMessage ? (
-            <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mb-4">
-                <Mail className="w-8 h-8 text-white" />
-              </div>
-              <h1 className="font-display text-2xl font-bold text-foreground mb-2">Check Your Email</h1>
-              <p className="text-muted-foreground text-sm mb-6">
-                We sent a verification link to <strong>{email}</strong>. Please check your inbox and spam folder.
-              </p>
-              <div className="space-y-3 w-full">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleResendVerification}
-                  disabled={isResending}
-                >
-                  {isResending ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <Mail className="w-4 h-4 mr-2" />
-                  )}
-                  Resend Verification Email
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="w-full"
-                  onClick={() => {
-                    setShowVerificationMessage(false);
-                    setIsLogin(true);
-                  }}
-                >
-                  Back to Sign In
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <>
           <div className="flex flex-col items-center mb-8">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mb-4">
               <BookOpen className="w-8 h-8 text-white" />
             </div>
             <h1 className="font-display text-2xl font-bold text-foreground">StudyBuddy</h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              {isLogin ? 'Welcome back!' : 'Create your account'}
-            </p>
+            <p className="text-muted-foreground text-sm mt-1">Welcome back!</p>
           </div>
 
           <form onSubmit={handleAuth} className="space-y-4">
-            {!isLogin && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Display Name</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    placeholder="Your name"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-            )}
-
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Email</label>
               <div className="relative">
@@ -256,28 +148,11 @@ const Auth: React.FC = () => {
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
-              ) : isLogin ? (
-                'Sign In'
               ) : (
-                'Create Account'
+                'Sign In'
               )}
             </Button>
           </form>
-
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setErrors({});
-              }}
-              className="text-sm text-primary hover:underline"
-            >
-              {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-            </button>
-          </div>
-            </>
-          )}
         </div>
       </motion.div>
     </div>
