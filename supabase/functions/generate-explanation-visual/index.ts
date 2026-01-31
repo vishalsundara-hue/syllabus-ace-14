@@ -11,7 +11,7 @@ const corsHeaders = {
 const MAX_TOPIC_LENGTH = 100;
 const MAX_QUESTION_LENGTH = 500;
 const MAX_EXPLANATION_LENGTH = 2000;
-const VALID_LEVELS = ['Beginner', 'Intermediate', 'Advanced'] as const;
+const VALID_LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'Master'] as const;
 
 interface RequestBody {
   topic: string;
