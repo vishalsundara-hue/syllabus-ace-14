@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      job_role_skills: {
+        Row: {
+          created_at: string
+          id: string
+          role_id: string
+          skill_name: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role_id: string
+          skill_name: string
+          weight: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role_id?: string
+          skill_name?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_role_skills_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "job_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_roles: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          role_name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          role_name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          role_name?: string
+        }
+        Relationships: []
+      }
       plan_likes: {
         Row: {
           created_at: string
@@ -70,6 +123,38 @@ export type Database = {
         }
         Relationships: []
       }
+      role_projects: {
+        Row: {
+          created_at: string
+          id: string
+          project_description: string | null
+          project_name: string
+          role_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          project_description?: string | null
+          project_name: string
+          role_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          project_description?: string | null
+          project_name?: string
+          role_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_projects_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "job_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shared_study_plans: {
         Row: {
           created_at: string
@@ -99,6 +184,33 @@ export type Database = {
           likes_count?: number | null
           title?: string
           topic?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_skills: {
+        Row: {
+          confidence: number
+          created_at: string
+          id: string
+          skill_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          confidence: number
+          created_at?: string
+          id?: string
+          skill_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          id?: string
+          skill_name?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
