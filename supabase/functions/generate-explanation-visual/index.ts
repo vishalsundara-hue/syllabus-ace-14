@@ -1,6 +1,5 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -77,37 +76,6 @@ serve(async (req) => {
   }
 
   try {
-    // Authentication check
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Unauthorized - Missing or invalid authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
-
-    // Verify the user's JWT token
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-
-    if (claimsError || !claimsData?.claims) {
-      console.error('Auth error:', claimsError);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Unauthorized - Invalid token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const userId = claimsData.claims.sub;
-    console.log('Authenticated user:', userId);
-
     // Parse and validate input
     let requestBody: unknown;
     try {
@@ -129,7 +97,7 @@ serve(async (req) => {
 
     const { topic, question, level, explanation } = validation.data;
 
-    console.log('Generating visual explanation for:', { topic, question, level, userId });
+    console.log('Generating visual explanation for:', { topic, question, level });
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -181,7 +149,7 @@ Style: Mathematical animation frame, vector graphics style, educational infograp
     }
 
     const imageData = await imageResponse.json();
-    console.log('Image generation response received for user:', userId);
+    console.log('Image generation response received');
 
     // Extract the generated image
     const generatedImage = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
