@@ -131,12 +131,12 @@ serve(async (req) => {
 
     console.log('Generating visual explanation for:', { topic, question, level, userId });
 
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-    if (!OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY is not configured');
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    // Generate a Manim-style educational diagram using DALL-E
+    // Generate a Manim-style educational diagram using Lovable AI
     const imagePrompt = `Create an educational diagram in the style of 3Blue1Brown Manim animations. 
 Topic: ${topic}
 Question: ${question}
@@ -153,24 +153,30 @@ The diagram should:
 
 Style: Mathematical animation frame, vector graphics style, educational infographic`;
 
-    const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
+    const imageResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'dall-e-3',
-        prompt: imagePrompt,
-        n: 1,
-        size: '1024x1024',
-        response_format: 'url'
+        model: 'google/gemini-3-pro-image-preview',
+        messages: [
+          { role: 'user', content: imagePrompt }
+        ],
+        modalities: ['image', 'text']
       }),
     });
 
     if (!imageResponse.ok) {
       const errorText = await imageResponse.text();
       console.error('Image generation failed:', errorText);
+      if (imageResponse.status === 429) {
+        throw new Error('Rate limit exceeded. Please try again in a moment.');
+      }
+      if (imageResponse.status === 402) {
+        throw new Error('AI usage limit reached. Please add credits to your workspace.');
+      }
       throw new Error(`Image generation failed: ${imageResponse.status}`);
     }
 
@@ -178,17 +184,17 @@ Style: Mathematical animation frame, vector graphics style, educational infograp
     console.log('Image generation response received for user:', userId);
 
     // Extract the generated image
-    const generatedImage = imageData.data?.[0]?.url;
+    const generatedImage = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
 
-    // Generate Manim Python code for the animation using GPT-4
-    const codeResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Generate Manim Python code using Lovable AI
+    const codeResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'google/gemini-3-flash-preview',
         messages: [
           {
             role: 'system',
