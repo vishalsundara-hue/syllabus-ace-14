@@ -58,12 +58,12 @@ const CommunityPanel: React.FC = () => {
 
       if (plansError) throw plansError;
 
-      // Fetch public profiles (without email) for all user_ids using RPC or direct query
+      // Fetch public profiles (without email) using the public_profiles view
       const userIds = [...new Set(plans?.map(p => p.user_id) || [])];
       
-      // Query profiles but only select non-sensitive fields
+      // Query public_profiles view which only exposes non-sensitive fields
       const { data: profiles } = await supabase
-        .from('profiles')
+        .from('public_profiles')
         .select('id, display_name, avatar_url')
         .in('id', userIds);
 
