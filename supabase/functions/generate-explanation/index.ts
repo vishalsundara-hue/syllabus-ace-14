@@ -82,9 +82,9 @@ serve(async (req) => {
 
     const { topic, question, level, keywords } = validation.data;
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    if (!OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not configured');
     }
 
     const systemPrompt = `You are StudyBuddy, an expert educational AI tutor. You explain concepts clearly using simple English, step-by-step instructions, and a friendly teacher-like tone.
@@ -115,14 +115,14 @@ Keywords detected: ${keywords.join(', ')}
 
 Please provide a comprehensive, accurate explanation for this ${level}-level question about ${topic}.`;
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
+        model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
@@ -132,14 +132,14 @@ Please provide a comprehensive, accurate explanation for this ${level}-level que
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Lovable AI error:', errorText);
+      console.error('OpenAI API error:', errorText);
       if (response.status === 429) {
         throw new Error('Rate limit exceeded. Please try again in a moment.');
       }
-      if (response.status === 402) {
-        throw new Error('AI usage limit reached. Please add credits to your workspace.');
+      if (response.status === 402 || response.status === 401) {
+        throw new Error('OpenAI API key issue. Please check your API key.');
       }
-      throw new Error(`AI API failed: ${response.status}`);
+      throw new Error(`OpenAI API failed: ${response.status}`);
     }
 
     const data = await response.json();
