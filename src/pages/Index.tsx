@@ -10,6 +10,7 @@ import StudyPlanner from '@/components/planner/StudyPlanner';
 import CommunityPanel from '@/components/community/CommunityPanel';
 import RoadmapPanel from '@/components/roadmap/RoadmapPanel';
 import ProgressPanel from '@/components/progress/ProgressPanel';
+import CareerIntelligencePanel from '@/components/career/CareerIntelligencePanel';
 import { Question, Answer } from '@/types';
 import { Sparkles, BookOpen, Brain, Zap } from 'lucide-react';
 
@@ -85,6 +86,8 @@ const Index: React.FC = () => {
         return <RoadmapPanel />;
       case 'progress':
         return <ProgressPanel />;
+      case 'career':
+        return <CareerIntelligencePanel />;
       default:
         return null;
     }

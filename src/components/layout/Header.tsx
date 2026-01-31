@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Moon, Sun, History, Upload, Map, Calendar, Users, Compass, TrendingUp } from 'lucide-react';
+import { BookOpen, Moon, Sun, History, Upload, Map, Calendar, Users, Compass, TrendingUp, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -20,6 +20,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
     { id: 'planner', label: 'Study Plan', icon: Calendar },
     { id: 'roadmap', label: 'Roadmap', icon: Compass },
     { id: 'progress', label: 'Progress', icon: TrendingUp },
+    { id: 'career', label: 'Career', icon: Briefcase },
   ];
 
   return (
