@@ -131,12 +131,12 @@ serve(async (req) => {
 
     console.log('Generating visual explanation for:', { topic, question, level, userId });
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    if (!OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not configured');
     }
 
-    // Generate a Manim-style educational diagram using AI image generation
+    // Generate a Manim-style educational diagram using DALL-E
     const imagePrompt = `Create an educational diagram in the style of 3Blue1Brown Manim animations. 
 Topic: ${topic}
 Question: ${question}
@@ -153,18 +153,18 @@ The diagram should:
 
 Style: Mathematical animation frame, vector graphics style, educational infographic`;
 
-    const imageResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-image-preview',
-        messages: [
-          { role: 'user', content: imagePrompt }
-        ],
-        modalities: ['image', 'text']
+        model: 'dall-e-3',
+        prompt: imagePrompt,
+        n: 1,
+        size: '1024x1024',
+        response_format: 'url'
       }),
     });
 
@@ -178,17 +178,17 @@ Style: Mathematical animation frame, vector graphics style, educational infograp
     console.log('Image generation response received for user:', userId);
 
     // Extract the generated image
-    const generatedImage = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    const generatedImage = imageData.data?.[0]?.url;
 
-    // Generate Manim Python code for the animation (for reference/download)
-    const codeResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    // Generate Manim Python code for the animation using GPT-4
+    const codeResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'gpt-4o',
         messages: [
           {
             role: 'system',
