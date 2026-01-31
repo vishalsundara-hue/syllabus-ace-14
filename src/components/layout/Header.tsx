@@ -1,9 +1,7 @@
 import React from 'react';
-import { BookOpen, Moon, Sun, History, Upload, Map, Calendar, Users, LogIn, LogOut, User, Compass, TrendingUp } from 'lucide-react';
+import { BookOpen, Moon, Sun, History, Upload, Map, Calendar, Users, Compass, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useAuth } from '@/hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
   activeTab: string;
@@ -12,8 +10,6 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
   const { theme, toggleTheme } = useTheme();
-  const { user, signOut } = useAuth();
-  const navigate = useNavigate();
 
   const tabs = [
     { id: 'learn', label: 'Learn', icon: BookOpen },
@@ -67,34 +63,6 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
 
           {/* Right Actions */}
           <div className="flex items-center gap-2">
-            {user ? (
-              <div className="flex items-center gap-2">
-                <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-lg">
-                  <User className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm text-foreground">{user.email?.split('@')[0]}</span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={signOut}
-                  className="gap-2"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span className="hidden sm:inline">Sign Out</span>
-                </Button>
-              </div>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate('/auth')}
-                className="gap-2"
-              >
-                <LogIn className="w-4 h-4" />
-                Sign In
-              </Button>
-            )}
-            
             <Button
               variant="ghost"
               size="icon"
