@@ -18,6 +18,8 @@ const Auth: React.FC = () => {
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [showVerificationMessage, setShowVerificationMessage] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -62,6 +64,33 @@ const Auth: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleResendVerification = async () => {
+    if (!email) {
+      toast({ title: 'Error', description: 'Please enter your email address', variant: 'destructive' });
+      return;
+    }
+    
+    setIsResending(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+        },
+      });
+      if (error) throw error;
+      toast({ 
+        title: 'Email sent!', 
+        description: 'Please check your inbox and spam folder for the verification link.' 
+      });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -90,7 +119,11 @@ const Auth: React.FC = () => {
           },
         });
         if (error) throw error;
-        toast({ title: 'Account created!', description: 'Welcome to StudyBuddy!' });
+        setShowVerificationMessage(true);
+        toast({ 
+          title: 'Check your email!', 
+          description: 'We sent you a verification link. Please check your inbox and spam folder.' 
+        });
       }
     } catch (error: any) {
       let message = 'An error occurred';
@@ -124,6 +157,43 @@ const Auth: React.FC = () => {
         className="w-full max-w-md"
       >
         <div className="glass-card p-8">
+          {showVerificationMessage ? (
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mb-4">
+                <Mail className="w-8 h-8 text-white" />
+              </div>
+              <h1 className="font-display text-2xl font-bold text-foreground mb-2">Check Your Email</h1>
+              <p className="text-muted-foreground text-sm mb-6">
+                We sent a verification link to <strong>{email}</strong>. Please check your inbox and spam folder.
+              </p>
+              <div className="space-y-3 w-full">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleResendVerification}
+                  disabled={isResending}
+                >
+                  {isResending ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Mail className="w-4 h-4 mr-2" />
+                  )}
+                  Resend Verification Email
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => {
+                    setShowVerificationMessage(false);
+                    setIsLogin(true);
+                  }}
+                >
+                  Back to Sign In
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
           <div className="flex flex-col items-center mb-8">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mb-4">
               <BookOpen className="w-8 h-8 text-white" />
@@ -206,6 +276,8 @@ const Auth: React.FC = () => {
               {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
             </button>
           </div>
+            </>
+          )}
         </div>
       </motion.div>
     </div>
