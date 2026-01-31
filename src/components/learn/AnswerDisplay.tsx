@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Brain, Tag, TrendingUp, CheckCircle, XCircle, ChevronDown, ChevronUp, Sparkles, Image, Code, Download, Loader2 } from 'lucide-react';
+import { Brain, Tag, TrendingUp, CheckCircle, XCircle, ChevronDown, ChevronUp, Sparkles, Image, Code, Download, Loader2, Youtube, Box } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Question, Answer, MCQ } from '@/types';
 import { Progress } from '@/components/ui/progress';
@@ -23,6 +23,10 @@ const AnswerDisplay: React.FC<AnswerDisplayProps> = ({ question, answer }) => {
   const [visualImage, setVisualImage] = useState<string | null>(null);
   const [manimCode, setManimCode] = useState<string | null>(null);
   const [showCode, setShowCode] = useState(false);
+
+  // 3D image state
+  const [isGenerating3D, setIsGenerating3D] = useState(false);
+  const [image3D, setImage3D] = useState<string | null>(null);
 
   const levelColors = {
     Beginner: 'level-badge-beginner',
@@ -99,8 +103,6 @@ const AnswerDisplay: React.FC<AnswerDisplayProps> = ({ question, answer }) => {
     setManimCode(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
       const response = await supabase.functions.invoke('generate-explanation-visual', {
         body: {
           topic: question.topic,
@@ -131,6 +133,40 @@ const AnswerDisplay: React.FC<AnswerDisplayProps> = ({ question, answer }) => {
     }
   };
 
+  const generate3DImage = async () => {
+    if (!user) {
+      toast.error('Please sign in to generate 3D illustrations');
+      return;
+    }
+
+    setIsGenerating3D(true);
+    setImage3D(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-3d-visual', {
+        body: {
+          topic: question.topic,
+          concept: question.text,
+          level: question.level,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.success && data?.image) {
+        setImage3D(data.image);
+        toast.success('3D illustration generated!');
+      } else {
+        throw new Error(data?.error || 'Failed to generate 3D image');
+      }
+    } catch (error: any) {
+      console.error('Error generating 3D image:', error);
+      toast.error(error.message || 'Failed to generate 3D illustration');
+    } finally {
+      setIsGenerating3D(false);
+    }
+  };
+
   const downloadManimCode = () => {
     if (!manimCode) return;
     
@@ -144,6 +180,10 @@ const AnswerDisplay: React.FC<AnswerDisplayProps> = ({ question, answer }) => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     toast.success('Manim code downloaded!');
+  };
+
+  const getYoutubeLink = () => {
+    return `https://www.youtube.com/results?search_query=${encodeURIComponent(question.topic + ' ' + question.text.substring(0, 50) + ' tutorial')}`;
   };
 
   return (
@@ -195,6 +235,22 @@ const AnswerDisplay: React.FC<AnswerDisplayProps> = ({ question, answer }) => {
           </div>
         </div>
 
+        {/* YouTube Link */}
+        <div className="mt-4 p-3 bg-destructive/10 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Youtube className="w-4 h-4 text-destructive" />
+            <span className="text-sm text-foreground">Watch video tutorials on this topic</span>
+          </div>
+          <a
+            href={getYoutubeLink()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium text-destructive hover:underline"
+          >
+            Search YouTube →
+          </a>
+        </div>
+
         {/* Reason */}
         <div className="mt-4 p-3 bg-muted/50 rounded-lg">
           <p className="text-sm text-muted-foreground">
@@ -226,12 +282,83 @@ const AnswerDisplay: React.FC<AnswerDisplayProps> = ({ question, answer }) => {
         </div>
       </div>
 
-      {/* Visual Explanation Card */}
+      {/* 3D Visual Explanation Card */}
       <div className="glass-card p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-accent" />
+              <Box className="w-5 h-5 text-accent" />
+            </div>
+            <div>
+              <h3 className="font-display font-semibold text-lg text-foreground">3D Concept Illustration</h3>
+              <p className="text-sm text-muted-foreground">AI-generated 3D-style visualization</p>
+            </div>
+          </div>
+          {!image3D && (
+            <Button 
+              onClick={generate3DImage} 
+              disabled={isGenerating3D || !user}
+              variant="outline"
+              className="gap-2"
+            >
+              {isGenerating3D ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Box className="w-4 h-4" />
+                  Generate 3D
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+
+        {!user && (
+          <div className="p-4 bg-muted/30 rounded-xl text-center">
+            <p className="text-muted-foreground">Sign in to generate 3D illustrations</p>
+          </div>
+        )}
+
+        {isGenerating3D && (
+          <div className="p-8 bg-muted/30 rounded-xl flex flex-col items-center justify-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center">
+              <Loader2 className="w-6 h-6 text-accent animate-spin" />
+            </div>
+            <p className="text-muted-foreground">Generating 3D illustration...</p>
+          </div>
+        )}
+
+        {image3D && (
+          <div className="space-y-4">
+            <div className="rounded-xl overflow-hidden border border-border">
+              <img 
+                src={image3D} 
+                alt="3D concept illustration" 
+                className="w-full h-auto"
+              />
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={generate3DImage}
+              disabled={isGenerating3D}
+              className="gap-2"
+            >
+              <Box className="w-4 h-4" />
+              Regenerate 3D
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Visual Explanation Card */}
+      <div className="glass-card p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-primary" />
             </div>
             <div>
               <h3 className="font-display font-semibold text-lg text-foreground">Visual Explanation</h3>

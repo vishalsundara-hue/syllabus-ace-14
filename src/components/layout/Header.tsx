@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Moon, Sun, History, Upload, Map, Calendar, Users, LogIn, LogOut, User } from 'lucide-react';
+import { BookOpen, Moon, Sun, History, Upload, Map, Calendar, Users, LogIn, LogOut, User, Compass, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -20,8 +20,10 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
     { id: 'upload', label: 'Upload', icon: Upload },
     { id: 'history', label: 'History', icon: History },
     { id: 'mindmap', label: 'Mind Map', icon: Map },
-    { id: 'planner', label: 'Study Plan', icon: Calendar },
     { id: 'community', label: 'Community', icon: Users },
+    { id: 'planner', label: 'Study Plan', icon: Calendar },
+    { id: 'roadmap', label: 'Roadmap', icon: Compass },
+    { id: 'progress', label: 'Progress', icon: TrendingUp },
   ];
 
   return (
@@ -43,20 +45,20 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
           </div>
 
           {/* Navigation Tabs */}
-          <nav className="hidden lg:flex items-center gap-1 bg-muted/50 p-1 rounded-xl">
+          <nav className="hidden lg:flex items-center gap-1 bg-muted/50 p-1 rounded-xl overflow-x-auto max-w-3xl">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-all duration-200 whitespace-nowrap ${
                     activeTab === tab.id
                       ? 'bg-primary text-primary-foreground shadow-md'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-3.5 h-3.5" />
                   {tab.label}
                 </button>
               );
