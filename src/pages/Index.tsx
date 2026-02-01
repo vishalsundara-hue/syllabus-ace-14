@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Header from '@/components/layout/Header';
+import AppSidebar from '@/components/layout/AppSidebar';
 import TopicSelector from '@/components/learn/TopicSelector';
 import QuestionInput from '@/components/learn/QuestionInput';
 import AnswerDisplay from '@/components/learn/AnswerDisplay';
@@ -13,6 +13,7 @@ import ProgressPanel from '@/components/progress/ProgressPanel';
 import CareerIntelligencePanel from '@/components/career/CareerIntelligencePanel';
 import { Question, Answer } from '@/types';
 import { Sparkles, BookOpen, Brain, Zap } from 'lucide-react';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 const Index: React.FC = () => {
   const [activeTab, setActiveTab] = useState('learn');
@@ -94,29 +95,34 @@ const Index: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header activeTab={activeTab} setActiveTab={setActiveTab} />
-      <main className="container mx-auto px-4 py-8 max-w-5xl">
-        {renderContent()}
-      </main>
+    <TooltipProvider delayDuration={100}>
+      <div className="min-h-screen bg-background flex">
+        <AppSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+        
+        <div className="flex-1 ml-16">
+          <main className="container mx-auto px-4 py-8 max-w-5xl">
+            {renderContent()}
+          </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border mt-16">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                <BookOpen className="w-4 h-4 text-primary-foreground" />
+          {/* Footer */}
+          <footer className="border-t border-border mt-16">
+            <div className="container mx-auto px-4 py-6">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                    <BookOpen className="w-4 h-4 text-primary-foreground" />
+                  </div>
+                  <span className="font-display font-semibold text-foreground">StudyBuddy</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Your AI-powered academic learning companion
+                </p>
               </div>
-              <span className="font-display font-semibold text-foreground">StudyBuddy</span>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Your AI-powered academic learning companion
-            </p>
-          </div>
+          </footer>
         </div>
-      </footer>
-    </div>
+      </div>
+    </TooltipProvider>
   );
 };
 
