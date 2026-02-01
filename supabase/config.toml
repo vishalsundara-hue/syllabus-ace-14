@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.continue-conversation]
 verify_jwt = false
+
+[functions.extract-topics]
+verify_jwt = false
