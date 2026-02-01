@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { fileName, fileContent, fileType } = await req.json();
+    const { fileName, fileContent, fileType, pdfBase64 } = await req.json();
 
     if (!fileName) {
       return new Response(
@@ -25,7 +25,7 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    const systemPrompt = `You are an expert document analyzer. Given information about a study document, extract and identify the main topics and subtopics covered.
+    const systemPrompt = `You are an expert document analyzer and educational content specialist. Given information about a study document, extract and identify the main topics and subtopics covered.
 
 You MUST respond with a valid JSON object in this exact format:
 {
@@ -41,13 +41,45 @@ You MUST respond with a valid JSON object in this exact format:
   ]
 }
 
-Extract 4-6 meaningful topics from the document. Each topic should have 2-4 subtopics.
-Base your analysis on the file name and any content provided.
-Make the topics specific to the subject matter, not generic.`;
+IMPORTANT GUIDELINES:
+- Extract 4-8 meaningful, specific topics from the document content
+- Each topic should have 2-5 subtopics that represent key concepts within that topic
+- Make topics specific to the actual subject matter, NOT generic placeholders
+- If the document is about a specific subject (e.g., Data Structures, Physics, History), extract topics relevant to that subject
+- Topics should be actionable for studying - students should be able to select a topic and ask questions about it
+- Include topic names that reflect actual content from the document`;
 
-    const userMessage = fileContent 
-      ? `Analyze this document and extract topics:\n\nFile: ${fileName}\nType: ${fileType}\n\nContent:\n${fileContent.substring(0, 8000)}`
-      : `Analyze this document based on its name and type. Infer what topics it likely covers:\n\nFile: ${fileName}\nType: ${fileType}\n\nProvide relevant topics that would typically be found in a document with this name.`;
+    // Build the message content - use multimodal if PDF is provided
+    type MessageContent = string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
+    const messages: Array<{ role: string; content: MessageContent }> = [];
+    
+    if (pdfBase64 && fileType === 'application/pdf') {
+      // Use multimodal approach for PDFs - Gemini can process PDF as image
+      messages.push({ role: 'system', content: systemPrompt });
+      messages.push({ 
+        role: 'user', 
+        content: [
+          {
+            type: 'text',
+            text: `Analyze this PDF document "${fileName}" and extract detailed topics for learning. Extract specific, meaningful topics that a student can select to study and ask questions about. Respond with ONLY the JSON object.`
+          },
+          {
+            type: 'image_url',
+            image_url: {
+              url: `data:application/pdf;base64,${pdfBase64}`
+            }
+          }
+        ]
+      });
+    } else {
+      // Text-based analysis
+      const userMessage = fileContent && fileContent.length > 100
+        ? `Analyze this study document and extract detailed topics for learning:\n\nFile: ${fileName}\nType: ${fileType}\n\nDocument Content:\n${fileContent.substring(0, 15000)}\n\nExtract specific, meaningful topics from this content that a student can select to study and ask questions about.`
+        : `Analyze this document based on its name and type. Infer what topics it likely covers:\n\nFile: ${fileName}\nType: ${fileType}\n\nProvide relevant topics that would typically be found in a document with this name. Be specific to the subject matter.`;
+      
+      messages.push({ role: 'system', content: systemPrompt });
+      messages.push({ role: 'user', content: userMessage });
+    }
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -57,10 +89,7 @@ Make the topics specific to the subject matter, not generic.`;
       },
       body: JSON.stringify({
         model: 'google/gemini-3-flash-preview',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage }
-        ],
+        messages,
       }),
     });
 
@@ -85,9 +114,11 @@ Make the topics specific to the subject matter, not generic.`;
       content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       const parsed = JSON.parse(content);
       
+      // Store document context for Q&A
       return new Response(JSON.stringify({
         success: true,
-        ...parsed
+        ...parsed,
+        documentContext: fileContent ? fileContent.substring(0, 20000) : null
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -129,7 +160,8 @@ Make the topics specific to the subject matter, not generic.`;
             description: 'Complex concepts and deeper exploration',
             subtopics: ['Advanced Techniques', 'Edge Cases', 'Best Practices']
           }
-        ]
+        ],
+        documentContext: fileContent ? fileContent.substring(0, 20000) : null
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

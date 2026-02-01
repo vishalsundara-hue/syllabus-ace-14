@@ -31,19 +31,39 @@ const FileUpload: React.FC = () => {
     }
   }, []);
 
-  const extractTopicsWithAI = async (file: File): Promise<{ summary: string; keyPoints: string[]; topics: ExtractedTopic[] }> => {
+  const readFileAsBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Remove the data URL prefix (e.g., "data:application/pdf;base64,")
+        const base64 = result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const extractTopicsWithAI = async (file: File): Promise<{ summary: string; keyPoints: string[]; topics: ExtractedTopic[]; documentContext?: string }> => {
     try {
-      // Try to read file content for text-based files
+      // Read file content based on type
       let fileContent = '';
+      let pdfBase64 = '';
+      
       if (file.type === 'text/plain' || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
         fileContent = await file.text();
+      } else if (file.type === 'application/pdf') {
+        // Read PDF as base64 for server-side parsing
+        pdfBase64 = await readFileAsBase64(file);
       }
 
       const { data, error } = await supabase.functions.invoke('extract-topics', {
         body: {
           fileName: file.name,
           fileContent: fileContent,
-          fileType: file.type
+          fileType: file.type,
+          pdfBase64: pdfBase64
         }
       });
 
@@ -59,7 +79,8 @@ const FileUpload: React.FC = () => {
           topics: data.topics.map((t: ExtractedTopic, idx: number) => ({
             ...t,
             id: t.id || String(idx + 1)
-          }))
+          })),
+          documentContext: data.documentContext
         };
       }
 
@@ -94,7 +115,7 @@ const FileUpload: React.FC = () => {
       const isPdf = file.type === 'application/pdf';
       
       // Extract topics using AI
-      const { summary, keyPoints, topics } = await extractTopicsWithAI(file);
+      const { summary, keyPoints, topics, documentContext } = await extractTopicsWithAI(file);
       
       const uploadedFile: UploadedFile = {
         id: Date.now().toString(),
@@ -104,6 +125,7 @@ const FileUpload: React.FC = () => {
         keyPoints,
         topics,
         uploadedAt: new Date(),
+        documentContext,
       };
 
       addUploadedFile(uploadedFile);
