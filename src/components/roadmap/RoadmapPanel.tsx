@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Compass, BookOpen, Clock, CheckCircle, ChevronRight, Sparkles, Loader2 } from 'lucide-react';
+import { Compass, BookOpen, Clock, CheckCircle, ChevronRight, Sparkles, Loader2, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
 
 interface RoadmapStep {
   title: string;
@@ -20,9 +21,36 @@ interface Roadmap {
 }
 
 const RoadmapPanel: React.FC = () => {
+  const { user } = useAuth();
   const [topic, setTopic] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
+
+  const shareToCommunity = async () => {
+    if (!user) {
+      toast.error('Please sign in to share');
+      return;
+    }
+    if (!roadmap) return;
+
+    setIsSharing(true);
+    try {
+      const { error } = await supabase.from('shared_roadmaps' as any).insert({
+        user_id: user.id,
+        title: `${roadmap.topic} Learning Path`,
+        topic: roadmap.topic,
+        roadmap_data: roadmap as unknown as Record<string, unknown>,
+      } as any);
+
+      if (error) throw error;
+      toast.success('Roadmap shared to community!');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to share');
+    } finally {
+      setIsSharing(false);
+    }
+  };
 
   const generateRoadmap = async () => {
     if (!topic.trim()) return;
@@ -141,8 +169,19 @@ const RoadmapPanel: React.FC = () => {
                 Estimated time: {roadmap.totalDuration}
               </p>
             </div>
-            <div className="text-sm text-muted-foreground">
-              {roadmap.steps.filter(s => s.completed).length}/{roadmap.steps.length} completed
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={shareToCommunity}
+                disabled={isSharing}
+              >
+                {isSharing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Share2 className="w-4 h-4 mr-2" />}
+                Share
+              </Button>
+              <div className="text-sm text-muted-foreground">
+                {roadmap.steps.filter(s => s.completed).length}/{roadmap.steps.length} completed
+              </div>
             </div>
           </div>
 

@@ -155,6 +155,72 @@ export type Database = {
           },
         ]
       }
+      shared_mindmaps: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          likes_count: number | null
+          mindmap_data: Json
+          title: string
+          topic: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          likes_count?: number | null
+          mindmap_data: Json
+          title: string
+          topic: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          likes_count?: number | null
+          mindmap_data?: Json
+          title?: string
+          topic?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      shared_roadmaps: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          likes_count: number | null
+          roadmap_data: Json
+          title: string
+          topic: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          likes_count?: number | null
+          roadmap_data: Json
+          title: string
+          topic: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          likes_count?: number | null
+          roadmap_data?: Json
+          title?: string
+          topic?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       shared_study_plans: {
         Row: {
           created_at: string

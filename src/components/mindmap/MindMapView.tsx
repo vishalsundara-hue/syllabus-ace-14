@@ -1,16 +1,44 @@
 import React, { useState } from 'react';
-import { Map, Sparkles, RotateCcw } from 'lucide-react';
+import { Map, Sparkles, RotateCcw, Share2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MindMapNode } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
 import MindMap2D from './MindMap2D';
 
 const MindMapView: React.FC = () => {
+  const { user } = useAuth();
   const [topic, setTopic] = useState('');
   const [mindMap, setMindMap] = useState<MindMapNode | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+
+  const shareToCommunity = async () => {
+    if (!user) {
+      toast.error('Please sign in to share');
+      return;
+    }
+    if (!mindMap || !topic.trim()) return;
+
+    setIsSharing(true);
+    try {
+      const { error } = await supabase.from('shared_mindmaps' as any).insert({
+        user_id: user.id,
+        title: `Mind Map: ${topic}`,
+        topic: topic.trim(),
+        mindmap_data: mindMap as unknown as Record<string, unknown>,
+      } as any);
+
+      if (error) throw error;
+      toast.success('Mind map shared to community!');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to share');
+    } finally {
+      setIsSharing(false);
+    }
+  };
 
   const generateMindMap = async () => {
     if (!topic.trim()) return;
@@ -87,14 +115,25 @@ const MindMapView: React.FC = () => {
               <Map className="w-5 h-5 text-primary" />
               {mindMap.label}
             </h3>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setMindMap(null)}
-            >
-              <RotateCcw className="w-4 h-4 mr-2" />
-              Reset
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={shareToCommunity}
+                disabled={isSharing}
+              >
+                {isSharing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Share2 className="w-4 h-4 mr-2" />}
+                Share
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setMindMap(null)}
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Reset
+              </Button>
+            </div>
           </div>
 
           {/* 2D Canvas */}
