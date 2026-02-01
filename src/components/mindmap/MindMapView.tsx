@@ -1,13 +1,11 @@
-import React, { useState, Suspense } from 'react';
-import { Map, Sparkles, RotateCcw, Box } from 'lucide-react';
+import React, { useState } from 'react';
+import { Map, Sparkles, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MindMapNode } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-
-// Lazy load 3D component
-const MindMap3D = React.lazy(() => import('./MindMap3D'));
+import MindMap2D from './MindMap2D';
 
 const MindMapView: React.FC = () => {
   const [topic, setTopic] = useState('');
@@ -30,7 +28,7 @@ const MindMapView: React.FC = () => {
 
       if (data?.mindMap) {
         setMindMap(data.mindMap);
-        toast.success('3D Mind map generated successfully!');
+        toast.success('Mind map generated successfully!');
       } else {
         throw new Error('Invalid response from AI');
       }
@@ -48,11 +46,11 @@ const MindMapView: React.FC = () => {
       <div className="glass-card p-6 animate-slide-up">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Box className="w-5 h-5 text-primary" />
+            <Map className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h2 className="font-display font-semibold text-lg text-foreground">3D Mind Map Generator</h2>
-            <p className="text-sm text-muted-foreground">Create interactive 3D concept maps for any topic</p>
+            <h2 className="font-display font-semibold text-lg text-foreground">Mind Map Generator</h2>
+            <p className="text-sm text-muted-foreground">Create visual concept maps for any topic</p>
           </div>
         </div>
 
@@ -73,21 +71,21 @@ const MindMapView: React.FC = () => {
             ) : (
               <>
                 <Sparkles className="w-4 h-4 mr-2" />
-                Generate 3D
+                Generate
               </>
             )}
           </Button>
         </div>
       </div>
 
-      {/* 3D Mind Map Display */}
+      {/* Mind Map Display */}
       {mindMap && (
-        <div className="glass-card p-6 animate-slide-up relative" style={{ animationDelay: '0.1s' }}>
+        <div className="glass-card p-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
           {/* Controls */}
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-display font-semibold text-lg text-foreground flex items-center gap-2">
               <Map className="w-5 h-5 text-primary" />
-              {mindMap.label} - 3D Concept Map
+              {mindMap.label}
             </h3>
             <Button
               variant="outline"
@@ -99,31 +97,22 @@ const MindMapView: React.FC = () => {
             </Button>
           </div>
 
-          {/* 3D Canvas */}
-          <Suspense fallback={
-            <div className="w-full h-[500px] rounded-xl bg-muted flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-8 h-8 mx-auto mb-2 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                <p className="text-sm text-muted-foreground">Loading 3D visualization...</p>
-              </div>
-            </div>
-          }>
-            <MindMap3D mindMap={mindMap} />
-          </Suspense>
+          {/* 2D Canvas */}
+          <MindMap2D mindMap={mindMap} />
 
           {/* Legend */}
           <div className="mt-4 flex items-center justify-center gap-6 text-xs text-muted-foreground">
             <span className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#8b5cf6]" /> Main Topic
+              <div className="w-3 h-3 rounded-full bg-primary" /> Main Topic
             </span>
             <span className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#06b6d4]" /> Category
+              <div className="w-3 h-3 rounded-full" style={{ background: 'hsl(186 94% 42%)' }} /> Category
             </span>
             <span className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#22c55e]" /> Sub-concept
+              <div className="w-3 h-3 rounded-full" style={{ background: 'hsl(142 71% 45%)' }} /> Sub-concept
             </span>
             <span className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#f59e0b]" /> Detail
+              <div className="w-3 h-3 rounded-full" style={{ background: 'hsl(38 92% 50%)' }} /> Detail
             </span>
           </div>
         </div>
@@ -133,11 +122,11 @@ const MindMapView: React.FC = () => {
       {!mindMap && !isGenerating && (
         <div className="glass-card p-12 text-center animate-slide-up" style={{ animationDelay: '0.1s' }}>
           <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-muted flex items-center justify-center">
-            <Box className="w-10 h-10 text-muted-foreground" />
+            <Map className="w-10 h-10 text-muted-foreground" />
           </div>
-          <p className="font-medium text-foreground mb-2">No 3D mind map yet</p>
+          <p className="font-medium text-foreground mb-2">No mind map yet</p>
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Enter a topic above to generate an interactive 3D visual concept map that you can rotate, zoom, and explore
+            Enter a topic above to generate a visual concept map
           </p>
         </div>
       )}
