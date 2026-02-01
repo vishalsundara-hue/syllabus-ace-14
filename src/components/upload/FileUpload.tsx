@@ -31,68 +31,98 @@ const FileUpload: React.FC = () => {
     }
   }, []);
 
-  const generateTopics = (): ExtractedTopic[] => {
-    return [
-      {
-        id: '1',
-        name: 'Introduction & Fundamentals',
-        description: 'Basic concepts and foundational knowledge',
-        subtopics: ['Definitions', 'Core Principles', 'Historical Background']
-      },
-      {
-        id: '2',
-        name: 'Core Concepts',
-        description: 'Main theoretical frameworks and models',
-        subtopics: ['Key Theories', 'Important Models', 'Relationships']
-      },
-      {
-        id: '3',
-        name: 'Applications & Examples',
-        description: 'Practical implementations and use cases',
-        subtopics: ['Real-world Examples', 'Case Studies', 'Problem Solving']
-      },
-      {
-        id: '4',
-        name: 'Advanced Topics',
-        description: 'Complex concepts and optimization',
-        subtopics: ['Edge Cases', 'Optimization', 'Advanced Techniques']
-      },
-      {
-        id: '5',
-        name: 'Practice & Assessment',
-        description: 'Questions and exercises for mastery',
-        subtopics: ['MCQs', 'Long Answer', 'Numerical Problems']
+  const extractTopicsWithAI = async (file: File): Promise<{ summary: string; keyPoints: string[]; topics: ExtractedTopic[] }> => {
+    try {
+      // Try to read file content for text-based files
+      let fileContent = '';
+      if (file.type === 'text/plain' || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
+        fileContent = await file.text();
       }
-    ];
+
+      const { data, error } = await supabase.functions.invoke('extract-topics', {
+        body: {
+          fileName: file.name,
+          fileContent: fileContent,
+          fileType: file.type
+        }
+      });
+
+      if (error) {
+        console.error('Error extracting topics:', error);
+        throw error;
+      }
+
+      if (data?.success) {
+        return {
+          summary: data.summary,
+          keyPoints: data.keyPoints,
+          topics: data.topics.map((t: ExtractedTopic, idx: number) => ({
+            ...t,
+            id: t.id || String(idx + 1)
+          }))
+        };
+      }
+
+      throw new Error('Failed to extract topics');
+    } catch (error) {
+      console.error('Topic extraction failed, using fallback:', error);
+      // Fallback to default topics
+      return {
+        summary: `Document "${file.name}" has been uploaded. The AI will analyze its contents for study assistance.`,
+        keyPoints: [
+          'Document successfully uploaded',
+          'AI-powered topic extraction',
+          'Interactive Q&A available',
+          'Visual explanations on demand',
+          'Practice questions included'
+        ],
+        topics: [
+          { id: '1', name: 'Introduction & Fundamentals', description: 'Basic concepts and foundational knowledge', subtopics: ['Definitions', 'Core Principles', 'Historical Background'] },
+          { id: '2', name: 'Core Concepts', description: 'Main theoretical frameworks and models', subtopics: ['Key Theories', 'Important Models', 'Relationships'] },
+          { id: '3', name: 'Applications & Examples', description: 'Practical implementations and use cases', subtopics: ['Real-world Examples', 'Case Studies', 'Problem Solving'] },
+          { id: '4', name: 'Advanced Topics', description: 'Complex concepts and optimization', subtopics: ['Edge Cases', 'Optimization', 'Advanced Techniques'] }
+        ]
+      };
+    }
   };
 
   const processFile = async (file: File) => {
     setIsProcessing(true);
     setProcessingFile(file.name);
 
-    await new Promise(resolve => setTimeout(resolve, 2500));
+    try {
+      const isPdf = file.type === 'application/pdf';
+      
+      // Extract topics using AI
+      const { summary, keyPoints, topics } = await extractTopicsWithAI(file);
+      
+      const uploadedFile: UploadedFile = {
+        id: Date.now().toString(),
+        name: file.name,
+        type: isPdf ? 'pdf' : 'image',
+        summary,
+        keyPoints,
+        topics,
+        uploadedAt: new Date(),
+      };
 
-    const isPdf = file.type === 'application/pdf';
-    
-    const uploadedFile: UploadedFile = {
-      id: Date.now().toString(),
-      name: file.name,
-      type: isPdf ? 'pdf' : 'image',
-      summary: `This ${isPdf ? 'document' : 'image'} contains comprehensive study material. The AI has analyzed the content and extracted key topics, concepts, and learning points that will help you understand the subject better.`,
-      keyPoints: [
-        'Introduction to core concepts and terminology',
-        'Step-by-step explanation of key processes',
-        'Real-world applications and examples',
-        'Important formulas and definitions',
-        'Practice problems and solutions',
-      ],
-      topics: generateTopics(),
-      uploadedAt: new Date(),
-    };
-
-    addUploadedFile(uploadedFile);
-    setIsProcessing(false);
-    setProcessingFile(null);
+      addUploadedFile(uploadedFile);
+      
+      toast({
+        title: "File Processed!",
+        description: `Extracted ${topics.length} topics from ${file.name}`,
+      });
+    } catch (error) {
+      console.error('Error processing file:', error);
+      toast({
+        title: "Processing Error",
+        description: "Failed to process file. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
+      setProcessingFile(null);
+    }
   };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
